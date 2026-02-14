@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
-func getLines(result chan string, file io.ReadCloser)  {
+func getLines(result chan string, r io.ReadCloser)  {
 	defer close(result)
-	defer file.Close()
+	defer r.Close()
 	str := ""
 	for {
 		data := make([]byte, 8)
-		n, err := file.Read(data)
+		n, err := r.Read(data)
 		if err != nil {
 			break
 		}
@@ -41,12 +44,31 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 
 
 func main() {
-	f, err := os.Open("messages.txt")
+	listener, err := net.Listen("tcp", ":42069")
 	if err != nil {
-		log.Fatal("error", "error",  err)
+		log.Fatal(err)
 	}
-	lines := getLinesChannel(f)
-	for line := range lines {
-		fmt.Printf("read: %s\n", line)
-	}
+	defer listener.Close()
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+
+	fmt.Println("Listening on :42069")
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				fmt.Println("Could not accept connection")
+			}
+			go func(c net.Conn) {
+				defer conn.Close()
+				lines := getLinesChannel(conn)
+				for line := range lines {
+					fmt.Printf("%s\n", line)
+				}
+			}(conn)
+		}
+	}()
+	<-sig
+	fmt.Println("\nWe're going down down...")
+	os.Exit(0)
 }
