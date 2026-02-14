@@ -59,12 +59,13 @@ func main() {
 			if err != nil {
 				fmt.Println("Could not accept connection")
 			}
+			fmt.Println("Connection accepted")
 			go func(c net.Conn) {
 				defer conn.Close()
-				lines := getLinesChannel(conn)
-				for line := range lines {
+				for line := range getLinesChannel(conn) {
 					fmt.Printf("%s\n", line)
 				}
+				fmt.Println("Connection stopped")
 			}(conn)
 		}
 	}()
