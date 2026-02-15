@@ -63,7 +63,7 @@ func main() {
 			go func(c net.Conn) {
 				defer conn.Close()
 				for line := range getLinesChannel(conn) {
-					fmt.Printf("%s\n", line)
+					fmt.Printf("read: %s\n", line)
 				}
 				fmt.Println("Connection stopped")
 			}(conn)
