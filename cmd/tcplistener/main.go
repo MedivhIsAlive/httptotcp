@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"medivhtcp/internal/request"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
-func getLines(result chan string, r io.ReadCloser)  {
+func getLines(result chan string, r io.ReadCloser) {
 	defer close(result)
 	defer r.Close()
 	str := ""
@@ -24,7 +22,7 @@ func getLines(result chan string, r io.ReadCloser)  {
 		data = data[:n]
 		if i := bytes.IndexByte(data, '\n'); i != -1 {
 			str += string(data[:i])
-			data = data[i + 1:]
+			data = data[i+1:]
 
 			result <- str
 			str = ""
@@ -36,40 +34,25 @@ func getLines(result chan string, r io.ReadCloser)  {
 	}
 }
 
-func getLinesChannel(f io.ReadCloser) <-chan string {
-	out := make(chan string)
-	go getLines(out, f)
-	return out
-}
-
-
 func main() {
 	listener, err := net.Listen("tcp", ":42069")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer listener.Close()
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Println("Listening on :42069")
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				fmt.Println("Could not accept connection")
-			}
-			fmt.Println("Connection accepted")
-			go func(c net.Conn) {
-				defer conn.Close()
-				for line := range getLinesChannel(conn) {
-					fmt.Printf("read: %s\n", line)
-				}
-				fmt.Println("Connection stopped")
-			}(conn)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Fatal("error", "error", err)
 		}
-	}()
-	<-sig
-	fmt.Println("\nWe're going down down...")
-	os.Exit(0)
+
+		r, err := request.RequestFromReader(conn)
+		if err != nil {
+			log.Fatal("error", "error", err)
+		}
+		fmt.Printf("Request line:\n")
+		fmt.Printf("- Method: %s\n", r.RequestLine.Method)
+		fmt.Printf("- Target: %s\n", r.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\n", r.RequestLine.HttpVersion)
+	}
 }
