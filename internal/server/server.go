@@ -13,7 +13,7 @@ type HandlerError struct {
 	Message    string
 }
 
-type Handler func(w *response.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request)
 
 type Server struct {
 	closed  bool
